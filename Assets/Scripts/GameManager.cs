@@ -10,6 +10,8 @@ public class GameManager : MonoBehaviour
     public GameObject buildInventory;
     public Transform inventoryItem;
     public Transform inventoryItemParent;
+    public Image selectedImage;
+    public Text selectedText;
 
     private Transform selectedItem;
     private RaycastHit hit;
@@ -102,6 +104,9 @@ public class GameManager : MonoBehaviour
 
     public void EquipInventoryItem()
     {
-        selectedItem = allBlocksAndNames[EventSystem.current.currentSelectedGameObject.name];
+        GameObject clickedButton = EventSystem.current.currentSelectedGameObject;
+        selectedItem = allBlocksAndNames[clickedButton.name];
+        selectedImage.sprite = clickedButton.transform.FindChild("Image").GetComponent<Image>().sprite;
+        selectedText.text = clickedButton.name;
     }
 }
