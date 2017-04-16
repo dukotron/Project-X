@@ -1,21 +1,36 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
     public RectTransform collapsible;
     public GameObject buildInventory;
+    public Transform inventoryItem;
+    public Transform inventoryItemParent;
 
     private Transform selectedItem;
     private RaycastHit hit;
 
     private bool expandBuild = false;
+    private Dictionary<string, Transform> allBlocksAndNames = new Dictionary<string, Transform>();
 
     void Start()
     {
+        GameObject[] blocksList = Resources.LoadAll<GameObject>("Prefabs/Blocks");
+        foreach (var obj in blocksList)
+        {
+            allBlocksAndNames.Add(obj.name, obj.transform);
 
+            Transform newButton = Instantiate(inventoryItem);
+            newButton.name = obj.name;
+            newButton.FindChild("Image").GetComponent<Image>().sprite = Resources.Load<Sprite>("Prefabs/Blocks/" + obj.name + "Img");
+            newButton.GetComponentInChildren<Text>().text = obj.name;
+            newButton.GetComponent<Button>().onClick.AddListener(() => EquipInventoryItem());
+            newButton.SetParent(inventoryItemParent, false);
+        }
     }
 
     void Update()
@@ -65,13 +80,17 @@ public class GameManager : MonoBehaviour
         if (!expandBuild) {
             expandBuild = true;
             StartCoroutine(DelayInventory(true, 0.9f));
-            button.image.color = new Color32(0xCE, 0xCE, 0xCE, 0x96);
+            ColorBlock cb = button.colors;
+            cb.normalColor = new Color32(0x5A, 0x59, 0x5D, 0xE1);
+            button.colors = cb;
         }
         else
         {
             expandBuild = false;
             StartCoroutine(DelayInventory(false, 0f));
-            button.image.color = new Color32(0xFF, 0xFF, 0xFF, 0xE1);
+            ColorBlock cb = button.colors;
+            cb.normalColor = new Color32(0x2F, 0x2F, 0x2F, 0xFF);
+            button.colors = cb;
         }
     }
 
@@ -79,5 +98,10 @@ public class GameManager : MonoBehaviour
     {
         yield return new WaitForSeconds(time);
         buildInventory.SetActive(state);
+    }
+
+    public void EquipInventoryItem()
+    {
+        selectedItem = allBlocksAndNames[EventSystem.current.currentSelectedGameObject.name];
     }
 }
