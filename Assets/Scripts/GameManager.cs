@@ -14,25 +14,17 @@ public class GameManager : MonoBehaviour
     public Text selectedText;
 
     private Transform selectedItem;
+    private Transform loadSelectedShip;
     private RaycastHit hit;
 
     private bool expandBuild = false;
-    private Dictionary<string, Transform> allBlocksAndNames = new Dictionary<string, Transform>();
+    private Dictionary<string, Transform> loadedBlocksAndNames = new Dictionary<string, Transform>();
+    private List<Transform> loadedButtons = new List<Transform>();
+    private List<Transform> buildAreas = new List<Transform>();
 
     void Start()
     {
-        GameObject[] blocksList = Resources.LoadAll<GameObject>("Prefabs/Blocks");
-        foreach (var obj in blocksList)
-        {
-            allBlocksAndNames.Add(obj.name, obj.transform);
-
-            Transform newButton = Instantiate(inventoryItem);
-            newButton.name = obj.name;
-            newButton.FindChild("Image").GetComponent<Image>().sprite = Resources.Load<Sprite>("Prefabs/Blocks/" + obj.name + "Img");
-            newButton.GetComponentInChildren<Text>().text = obj.name;
-            newButton.GetComponent<Button>().onClick.AddListener(() => EquipInventoryItem());
-            newButton.SetParent(inventoryItemParent, false);
-        }
+        LoadInventoryTab("Prefabs/ShipTypes/");
     }
 
     void Update()
@@ -42,22 +34,27 @@ public class GameManager : MonoBehaviour
         if (Physics.Raycast(ray, out hit))
         {
 
-            if (Input.GetMouseButtonDown(0) && selectedItem != null)
+            if (Input.GetMouseButtonDown(0) && selectedItem != null && Input.GetMouseButton(1))
             {
-                Vector3 incomingVec = hit.normal;
+                Vector3 placePos = hit.transform.position + hit.normal;
+                Transform parent = null;
+                bool blocked = true;
 
-                if (incomingVec == new Vector3(0, 1, 0))
-                    Instantiate(selectedItem, new Vector3(hit.transform.position.x, hit.transform.position.y + hit.transform.localScale.y, hit.transform.position.z), Quaternion.identity);
-                else if (incomingVec == new Vector3(0, -1, 0))
-                    Instantiate(selectedItem, new Vector3(hit.transform.position.x, hit.transform.position.y - hit.transform.localScale.y, hit.transform.position.z), Quaternion.identity);
-                else if (incomingVec == new Vector3(0, 0, 1))
-                    Instantiate(selectedItem, new Vector3(hit.transform.position.x, hit.transform.position.y, hit.transform.position.z + hit.transform.localScale.z), Quaternion.identity);
-                else if (incomingVec == new Vector3(0, 0, -1))
-                    Instantiate(selectedItem, new Vector3(hit.transform.position.x, hit.transform.position.y, hit.transform.position.z - hit.transform.localScale.z), Quaternion.identity);
-                else if (incomingVec == new Vector3(1, 0, 0))
-                    Instantiate(selectedItem, new Vector3(hit.transform.position.x + hit.transform.localScale.x, hit.transform.position.y, hit.transform.position.z), Quaternion.identity);
-                else if (incomingVec == new Vector3(-1, 0, 0))
-                    Instantiate(selectedItem, new Vector3(hit.transform.position.x - hit.transform.localScale.x, hit.transform.position.y, hit.transform.position.z), Quaternion.identity);
+                foreach (Transform tr in buildAreas)
+                {
+                    if (tr.FindChild("BuildArea(Clone)").GetComponentInChildren<BoxCollider>().bounds.Contains(placePos)
+                        && tr.FindChild("BuildArea(Clone)").GetComponentInChildren<BoxCollider>().bounds.Contains(Camera.main.transform.position))
+                    {
+                        blocked = false;
+                        parent = tr;
+                    }
+
+                }
+
+                if (blocked)
+                    return;
+
+                Instantiate(selectedItem, placePos, Quaternion.identity, parent);
 
                 print("Block Added");
             }
@@ -105,8 +102,53 @@ public class GameManager : MonoBehaviour
     public void EquipInventoryItem()
     {
         GameObject clickedButton = EventSystem.current.currentSelectedGameObject;
-        selectedItem = allBlocksAndNames[clickedButton.name];
+        selectedItem = loadedBlocksAndNames[clickedButton.name];
         selectedImage.sprite = clickedButton.transform.FindChild("Image").GetComponent<Image>().sprite;
         selectedText.text = clickedButton.name;
+    }
+
+    public void ShowShipsTab()
+    {
+        LoadInventoryTab("Prefabs/ShipTypes/");
+    }
+
+    public void ShowBlocksTab()
+    {
+        LoadInventoryTab("Prefabs/Blocks/");
+    }
+
+    public void SpawnNewShip()
+    {
+        GameObject clickedButton = EventSystem.current.currentSelectedGameObject;
+        loadSelectedShip = loadedBlocksAndNames[clickedButton.name];
+        buildAreas.Add(Instantiate(loadSelectedShip, Camera.main.transform.position, Quaternion.identity));
+    }
+
+    private void LoadInventoryTab(string path)
+    {
+        GameObject[] blocksList = Resources.LoadAll<GameObject>(path);
+        loadedBlocksAndNames.Clear();
+
+        foreach (Transform t in loadedButtons)
+            Destroy(t.gameObject);
+        loadedButtons.Clear();
+
+        foreach (var obj in blocksList)
+        {
+            loadedBlocksAndNames.Add(obj.name, obj.transform);
+
+            Transform newButton = Instantiate(inventoryItem);
+            newButton.name = obj.name;
+            newButton.FindChild("Image").GetComponent<Image>().sprite = Resources.Load<Sprite>(path + obj.name + "Img");
+            newButton.GetComponentInChildren<Text>().text = obj.name;
+
+            if (path == "Prefabs/ShipTypes/")
+                newButton.GetComponent<Button>().onClick.AddListener(() => SpawnNewShip());
+            else
+                newButton.GetComponent<Button>().onClick.AddListener(() => EquipInventoryItem());
+
+            newButton.SetParent(inventoryItemParent, false);
+            loadedButtons.Add(newButton);
+        }
     }
 }
